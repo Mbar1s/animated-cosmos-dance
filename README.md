@@ -1,6 +1,12 @@
-# Welcome to your Lovable project
 
 ## Project info
+Just trying out lovable for the first time, created a matrix like effect. 
+
+Interactions:
+
+Hover to increase the speed of characters
+Click to increase the speed of multiple characters
+Hold to make a blackhole
 
 **URL**: https://lovable.dev/projects/535c75ff-8bb6-4c3b-8692-80765f49c59e
 
