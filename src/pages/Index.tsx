@@ -11,7 +11,7 @@ const Index = () => {
             Enter the Matrix
           </h1>
           <p className="text-xl md:text-2xl text-green-300 max-w-lg mx-auto">
-            Move your mouse to influence the digital rain
+            Move your mouse to influence the digital rain, click anywhere for a surge effect
           </p>
         </div>
       </div>

@@ -23,8 +23,12 @@ const ParticleAnimation = () => {
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    // Matrix characters
-    const matrixChars = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz$@#&'.split('');
+    // Extended matrix characters including Japanese katakana and special symbols
+    const matrixChars = [
+      ...'0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz$@#&',
+      ...'ｱｲｳｴｵｶｷｸｹｺｻｼｽｾｿﾀﾁﾂﾃﾄﾅﾆﾇﾈﾉﾊﾋﾌﾍﾎﾏﾐﾑﾒﾓﾔﾕﾖﾗﾘﾙﾚﾛﾜﾝ',
+      ...'∞≠∑∫≤≥∏πφ∇∂±×÷∃∀∈∉⊆⊇⊄⊥∥∠⌀∡∢'
+    ].join('').split('');
     
     // Set up the canvas
     const handleResize = () => {
@@ -36,7 +40,7 @@ const ParticleAnimation = () => {
     window.addEventListener('resize', handleResize);
 
     // Initialize particles
-    const numParticles = 100;
+    const numParticles = 150; // Increased number of particles
     particles.current = [];
 
     for (let i = 0; i < numParticles; i++) {
@@ -55,7 +59,28 @@ const ParticleAnimation = () => {
       mouseX.current = event.clientX;
       mouseY.current = event.clientY;
     };
+
+    // Click effect
+    const handleClick = (event: MouseEvent) => {
+      const clickX = event.clientX;
+      const clickY = event.clientY;
+      
+      // Affect particles near the click
+      particles.current.forEach(particle => {
+        const dx = clickX - particle.x;
+        const dy = clickY - particle.y;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        
+        if (dist < 200) { // Click effect radius
+          particle.vy = Math.max(10, particle.vy * 3); // Boost speed
+          particle.opacity = 1; // Full opacity
+          particle.character = matrixChars[Math.floor(Math.random() * matrixChars.length)];
+        }
+      });
+    };
+
     window.addEventListener('mousemove', handleMouseMove);
+    window.addEventListener('click', handleClick);
 
     // Animation loop
     let animationFrameId: number;
@@ -63,7 +88,7 @@ const ParticleAnimation = () => {
       ctx.fillStyle = 'rgba(0, 0, 0, 0.1)';
       ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-      particles.current.forEach((particle, index) => {
+      particles.current.forEach(particle => {
         // Update particle position
         particle.y += particle.vy;
 
@@ -87,9 +112,13 @@ const ParticleAnimation = () => {
           particle.character = matrixChars[Math.floor(Math.random() * matrixChars.length)];
         }
 
-        // Draw particle
+        // Draw particle with glowing effect
+        const glow = particle.vy > 5 ? 0.8 : 0.3; // More glow for faster particles
+        ctx.shadowBlur = 5;
+        ctx.shadowColor = `rgba(0, 255, 70, ${glow})`;
         ctx.fillStyle = `rgba(0, 255, 70, ${particle.opacity})`;
         ctx.fillText(particle.character, particle.x, particle.y);
+        ctx.shadowBlur = 0;
 
         // Randomly change characters
         if (Math.random() < 0.01) {
@@ -104,6 +133,7 @@ const ParticleAnimation = () => {
     return () => {
       window.removeEventListener('resize', handleResize);
       window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('click', handleClick);
       cancelAnimationFrame(animationFrameId);
     };
   }, []);
