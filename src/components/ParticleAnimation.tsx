@@ -1,4 +1,3 @@
-
 import { useEffect, useRef } from 'react';
 
 interface Particle {
@@ -16,6 +15,9 @@ const ParticleAnimation = () => {
   const mouseX = useRef(0);
   const mouseY = useRef(0);
   const gradientHue = useRef(0);
+  const isMouseDown = useRef(false);
+  const circleRadius = useRef(0);
+  const lastMousePos = useRef({ x: 0, y: 0 });
 
   useEffect(() => {
     if (!canvasRef.current) return;
@@ -41,7 +43,7 @@ const ParticleAnimation = () => {
     window.addEventListener('resize', handleResize);
 
     // Initialize particles
-    const numParticles = 300; // Increased number of particles
+    const numParticles = 300;
     particles.current = [];
 
     for (let i = 0; i < numParticles; i++) {
@@ -49,7 +51,7 @@ const ParticleAnimation = () => {
         x: Math.random() * canvas.width,
         y: Math.random() * canvas.height,
         z: Math.random() * 2 - 1,
-        vy: 1 + Math.random() * 5, // More varied initial speeds
+        vy: 1 + Math.random() * 5,
         character: matrixChars[Math.floor(Math.random() * matrixChars.length)],
         opacity: Math.random()
       });
@@ -59,6 +61,21 @@ const ParticleAnimation = () => {
     const handleMouseMove = (event: MouseEvent) => {
       mouseX.current = event.clientX;
       mouseY.current = event.clientY;
+      if (isMouseDown.current) {
+        lastMousePos.current = { x: event.clientX, y: event.clientY };
+      }
+    };
+
+    // Mouse down/up handlers
+    const handleMouseDown = (event: MouseEvent) => {
+      isMouseDown.current = true;
+      lastMousePos.current = { x: event.clientX, y: event.clientY };
+      circleRadius.current = 0;
+    };
+
+    const handleMouseUp = () => {
+      isMouseDown.current = false;
+      circleRadius.current = 0;
     };
 
     // Click effect
@@ -80,19 +97,41 @@ const ParticleAnimation = () => {
     };
 
     window.addEventListener('mousemove', handleMouseMove);
+    window.addEventListener('mousedown', handleMouseDown);
+    window.addEventListener('mouseup', handleMouseUp);
     window.addEventListener('click', handleClick);
 
     // Animation loop
     let animationFrameId: number;
     const animate = () => {
-      // Update gradient background
+      // Update gradient background - now using black to green
       gradientHue.current = (gradientHue.current + 0.1) % 360;
       const gradient = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
-      gradient.addColorStop(0, `hsla(${gradientHue.current}, 50%, 10%, 0.1)`);
-      gradient.addColorStop(1, `hsla(${(gradientHue.current + 60) % 360}, 50%, 15%, 0.1)`);
+      gradient.addColorStop(0, `rgba(0, 20, 0, 0.1)`);
+      gradient.addColorStop(1, `rgba(0, ${Math.sin(gradientHue.current * 0.01) * 30 + 40}, 0, 0.1)`);
       
       ctx.fillStyle = gradient;
       ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      // Handle mouse hold effect
+      if (isMouseDown.current) {
+        circleRadius.current = Math.min(circleRadius.current + 5, 300);
+        const { x, y } = lastMousePos.current;
+
+        particles.current.forEach(particle => {
+          const dx = x - particle.x;
+          const dy = y - particle.y;
+          const dist = Math.sqrt(dx * dx + dy * dy);
+          
+          if (dist < circleRadius.current) {
+            const angle = Math.atan2(dy, dx);
+            const force = (circleRadius.current - dist) / circleRadius.current;
+            particle.x += Math.cos(angle) * force * 10;
+            particle.vy = Math.max(1, particle.vy + force * 2);
+            particle.opacity = Math.min(1, particle.opacity + 0.1);
+          }
+        });
+      }
 
       particles.current.forEach(particle => {
         // Update particle position with varied speed
@@ -118,6 +157,9 @@ const ParticleAnimation = () => {
           particle.character = matrixChars[Math.floor(Math.random() * matrixChars.length)];
         }
 
+        // Keep particles within canvas bounds
+        particle.x = Math.max(0, Math.min(canvas.width, particle.x));
+
         // Draw particle with glowing effect
         const glow = particle.vy > 5 ? 0.8 : 0.3;
         ctx.shadowBlur = 5;
@@ -140,6 +182,8 @@ const ParticleAnimation = () => {
     return () => {
       window.removeEventListener('resize', handleResize);
       window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mousedown', handleMouseDown);
+      window.removeEventListener('mouseup', handleMouseUp);
       window.removeEventListener('click', handleClick);
       cancelAnimationFrame(animationFrameId);
     };
@@ -149,4 +193,3 @@ const ParticleAnimation = () => {
 };
 
 export default ParticleAnimation;
-
