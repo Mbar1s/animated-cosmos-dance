@@ -6,6 +6,7 @@ import { useIsMobile } from "../hooks/use-mobile";
 const Index = () => {
   const [displayedTitle, setDisplayedTitle] = useState("");
   const [displayedText, setDisplayedText] = useState("");
+  const [showContent, setShowContent] = useState(true);
   const [typedText, setTypedText] = useState("");
   const isMobile = useIsMobile();
   const title = "Enter the Matrix";
@@ -47,34 +48,42 @@ const Index = () => {
       }
     }, 100);
 
+    // Hide content after 30 seconds
+    const hideTimeout = setTimeout(() => {
+      setShowContent(false);
+    }, 30000);
+
     return () => {
       clearInterval(titleInterval);
       clearInterval(textInterval);
+      clearTimeout(hideTimeout);
     };
   }, []);
 
   return (
     <>
       <ParticleAnimation typedText={typedText} setTypedText={setTypedText} />
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center content fade-in">
-          <h1 className="text-4xl md:text-6xl font-bold mb-6 text-green-400">
-            {displayedTitle}<span className="animate-pulse">|</span>
-          </h1>
-          <p className="text-xl md:text-2xl text-green-300 max-w-lg mx-auto">
-            {displayedText}<span className={`${displayedTitle.length === title.length ? "animate-pulse" : "hidden"}`}>|</span>
-          </p>
-          {isMobile && (
-            <input 
-              type="text" 
-              className="mt-4 bg-transparent border border-green-400 rounded px-4 py-2 text-green-400 focus:outline-none focus:border-green-300"
-              placeholder="Type here on mobile..."
-              value={typedText}
-              onChange={(e) => setTypedText(e.target.value)}
-            />
-          )}
+      {showContent && (
+        <div className="min-h-screen flex items-center justify-center">
+          <div className="text-center content fade-in">
+            <h1 className="text-4xl md:text-6xl font-bold mb-6 text-green-400">
+              {displayedTitle}<span className="animate-pulse">|</span>
+            </h1>
+            <p className="text-xl md:text-2xl text-green-300 max-w-lg mx-auto">
+              {displayedText}<span className={`${displayedTitle.length === title.length ? "animate-pulse" : "hidden"}`}>|</span>
+            </p>
+            {isMobile && (
+              <input 
+                type="text" 
+                className="mt-4 bg-transparent border border-green-400 rounded px-4 py-2 text-green-400 focus:outline-none focus:border-green-300"
+                placeholder="Type here on mobile..."
+                value={typedText}
+                onChange={(e) => setTypedText(e.target.value)}
+              />
+            )}
+          </div>
         </div>
-      </div>
+      )}
     </>
   );
 };

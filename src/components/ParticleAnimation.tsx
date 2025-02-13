@@ -32,16 +32,20 @@ const ParticleAnimation = ({ typedText, setTypedText }: ParticleAnimationProps) 
       const canvas = canvasRef.current;
       if (!canvas) return;
 
+      // Calculate starting X position to center the text
+      const totalWidth = typedText.length * 40; // 40px per character
+      const startX = (canvas.width - totalWidth) / 2;
+
       const chars = typedText.split('');
-      chars.forEach((char) => {
+      chars.forEach((char, index) => {
         particles.current.push({
-          x: Math.random() * canvas.width,
+          x: startX + (index * 40), // Position characters next to each other
           y: 0,
           z: Math.random() * 2 - 1,
           vy: 2 + Math.random() * 3,
           character: char,
           opacity: 1,
-          size: 30,
+          size: 40, // Increased size for typed characters
           createdAt: Date.now()
         });
       });
