@@ -36,25 +36,28 @@ const ParticleAnimation = ({ typedText, setTypedText }: ParticleAnimationProps) 
 
       const totalWidth = typedText.length * 40;
       const startX = (canvas.width - totalWidth) / 2;
+      const commonVelocity = 2; // Fixed velocity for all typed characters
 
       const chars = typedText.split('');
-      chars.forEach((char, index) => {
+      const newParticles = chars.map((char, index) => {
         const fixedX = startX + (index * 40);
-        particles.current.push({
+        return {
           x: fixedX,
           y: 0,
-          z: Math.random() * 2 - 1,
-          vy: 2 + Math.random() * 3,
+          z: 0,
+          vy: commonVelocity,
           character: char,
           opacity: 1,
           size: 40,
           createdAt: Date.now(),
           isTyped: true,
           fixedX: fixedX
-        });
+        };
       });
 
+      particles.current.push(...newParticles);
       setTypedText('');
+      
       setTimeout(() => {
         particles.current = particles.current.filter(p => !p.createdAt || Date.now() - p.createdAt < 30000);
       }, 30000);
@@ -196,11 +199,13 @@ const ParticleAnimation = ({ typedText, setTypedText }: ParticleAnimationProps) 
       }
 
       particles.current.forEach(particle => {
-        particle.y += particle.vy;
-
-        if (particle.isTyped && particle.fixedX !== undefined) {
-          particle.x = particle.fixedX;
+        if (particle.isTyped) {
+          particle.y += particle.vy;
+          if (particle.fixedX !== undefined) {
+            particle.x = particle.fixedX;
+          }
         } else {
+          particle.y += particle.vy;
           const dx = mouseX.current - particle.x;
           const dy = mouseY.current - particle.y;
           const dist = Math.sqrt(dx * dx + dy * dy);
