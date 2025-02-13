@@ -9,6 +9,8 @@ interface Particle {
   opacity: number;
   size?: number;
   createdAt?: number;
+  isTyped?: boolean;
+  fixedX?: number;
 }
 
 interface ParticleAnimationProps {
@@ -32,21 +34,23 @@ const ParticleAnimation = ({ typedText, setTypedText }: ParticleAnimationProps) 
       const canvas = canvasRef.current;
       if (!canvas) return;
 
-      // Calculate starting X position to center the text
-      const totalWidth = typedText.length * 40; // 40px per character
+      const totalWidth = typedText.length * 40;
       const startX = (canvas.width - totalWidth) / 2;
 
       const chars = typedText.split('');
       chars.forEach((char, index) => {
+        const fixedX = startX + (index * 40);
         particles.current.push({
-          x: startX + (index * 40), // Position characters next to each other
+          x: fixedX,
           y: 0,
           z: Math.random() * 2 - 1,
           vy: 2 + Math.random() * 3,
           character: char,
           opacity: 1,
-          size: 40, // Increased size for typed characters
-          createdAt: Date.now()
+          size: 40,
+          createdAt: Date.now(),
+          isTyped: true,
+          fixedX: fixedX
         });
       });
 
@@ -88,7 +92,8 @@ const ParticleAnimation = ({ typedText, setTypedText }: ParticleAnimationProps) 
         z: Math.random() * 2 - 1,
         vy: 1 + Math.random() * 5,
         character: matrixChars[Math.floor(Math.random() * matrixChars.length)],
-        opacity: Math.random()
+        opacity: Math.random(),
+        isTyped: false
       });
     }
 
@@ -174,16 +179,18 @@ const ParticleAnimation = ({ typedText, setTypedText }: ParticleAnimationProps) 
         const pos = lastTouchPos.current.x !== 0 ? lastTouchPos.current : lastMousePos.current;
 
         particles.current.forEach(particle => {
-          const dx = pos.x - particle.x;
-          const dy = pos.y - particle.y;
-          const dist = Math.sqrt(dx * dx + dy * dy);
-          
-          if (dist < circleRadius.current) {
-            const angle = Math.atan2(dy, dx);
-            const force = (circleRadius.current - dist) / circleRadius.current;
-            particle.x += Math.cos(angle) * force * 10;
-            particle.vy = Math.max(1, particle.vy + force * 2);
-            particle.opacity = Math.min(1, particle.opacity + 0.1);
+          if (!particle.isTyped) {
+            const dx = pos.x - particle.x;
+            const dy = pos.y - particle.y;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+            
+            if (dist < circleRadius.current) {
+              const angle = Math.atan2(dy, dx);
+              const force = (circleRadius.current - dist) / circleRadius.current;
+              particle.x += Math.cos(angle) * force * 10;
+              particle.vy = Math.max(1, particle.vy + force * 2);
+              particle.opacity = Math.min(1, particle.opacity + 0.1);
+            }
           }
         });
       }
@@ -191,22 +198,30 @@ const ParticleAnimation = ({ typedText, setTypedText }: ParticleAnimationProps) 
       particles.current.forEach(particle => {
         particle.y += particle.vy;
 
-        const dx = mouseX.current - particle.x;
-        const dy = mouseY.current - particle.y;
-        const dist = Math.sqrt(dx * dx + dy * dy);
-        if (dist < 100) {
-          particle.vy += 0.2;
-          particle.opacity = Math.min(1, particle.opacity + 0.05);
+        if (particle.isTyped && particle.fixedX !== undefined) {
+          particle.x = particle.fixedX;
         } else {
-          particle.vy = Math.max(1, particle.vy * 0.99);
-          particle.opacity = Math.max(0.3, particle.opacity - 0.01);
+          const dx = mouseX.current - particle.x;
+          const dy = mouseY.current - particle.y;
+          const dist = Math.sqrt(dx * dx + dy * dy);
+          if (dist < 100) {
+            particle.vy += 0.2;
+            particle.opacity = Math.min(1, particle.opacity + 0.05);
+          } else {
+            particle.vy = Math.max(1, particle.vy * 0.99);
+            particle.opacity = Math.max(0.3, particle.opacity - 0.01);
+          }
         }
 
         if (particle.y > canvas.height) {
-          particle.y = 0;
-          particle.x = Math.random() * canvas.width;
-          particle.vy = 1 + Math.random() * 5;
-          particle.character = matrixChars[Math.floor(Math.random() * matrixChars.length)];
+          if (particle.isTyped) {
+            particles.current = particles.current.filter(p => p !== particle);
+          } else {
+            particle.y = 0;
+            particle.x = Math.random() * canvas.width;
+            particle.vy = 1 + Math.random() * 5;
+            particle.character = matrixChars[Math.floor(Math.random() * matrixChars.length)];
+          }
         }
 
         particle.x = Math.max(0, Math.min(canvas.width, particle.x));
@@ -220,7 +235,7 @@ const ParticleAnimation = ({ typedText, setTypedText }: ParticleAnimationProps) 
         ctx.fillText(particle.character, particle.x, particle.y);
         ctx.shadowBlur = 0;
 
-        if (Math.random() < 0.01) {
+        if (!particle.isTyped && Math.random() < 0.01) {
           particle.character = matrixChars[Math.floor(Math.random() * matrixChars.length)];
           particle.vy = Math.max(1, particle.vy + (Math.random() * 2 - 1));
         }
