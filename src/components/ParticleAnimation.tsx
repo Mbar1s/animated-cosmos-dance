@@ -7,9 +7,16 @@ interface Particle {
   vy: number;
   character: string;
   opacity: number;
+  size?: number;
+  createdAt?: number;
 }
 
-const ParticleAnimation = () => {
+interface ParticleAnimationProps {
+  typedText: string;
+  setTypedText: (text: string) => void;
+}
+
+const ParticleAnimation = ({ typedText, setTypedText }: ParticleAnimationProps) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const particles = useRef<Particle[]>([]);
   const mouseX = useRef(0);
@@ -18,6 +25,33 @@ const ParticleAnimation = () => {
   const isMouseDown = useRef(false);
   const circleRadius = useRef(0);
   const lastMousePos = useRef({ x: 0, y: 0 });
+  const lastTouchPos = useRef({ x: 0, y: 0 });
+
+  useEffect(() => {
+    if (typedText) {
+      const canvas = canvasRef.current;
+      if (!canvas) return;
+
+      const chars = typedText.split('');
+      chars.forEach((char) => {
+        particles.current.push({
+          x: Math.random() * canvas.width,
+          y: 0,
+          z: Math.random() * 2 - 1,
+          vy: 2 + Math.random() * 3,
+          character: char,
+          opacity: 1,
+          size: 30,
+          createdAt: Date.now()
+        });
+      });
+
+      setTypedText('');
+      setTimeout(() => {
+        particles.current = particles.current.filter(p => !p.createdAt || Date.now() - p.createdAt < 30000);
+      }, 30000);
+    }
+  }, [typedText, setTypedText]);
 
   useEffect(() => {
     if (!canvasRef.current) return;
@@ -26,14 +60,12 @@ const ParticleAnimation = () => {
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    // Extended matrix characters including Japanese katakana and special symbols
     const matrixChars = [
       ...'0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz$@#&',
       ...'ｱｲｳｴｵｶｷｸｹｺｻｼｽｾｿﾀﾁﾂﾃﾄﾅﾆﾇﾈﾉﾊﾋﾌﾍﾎﾏﾐﾑﾒﾓﾔﾕﾖﾗﾘﾙﾚﾛﾜﾝ',
       ...'∞≠∑∫≤≥∏πφ∇∂±×÷∃∀∈∉⊆⊇⊄⊥∥∠⌀∡∢'
     ].join('').split('');
     
-    // Set up the canvas
     const handleResize = () => {
       canvas.width = window.innerWidth;
       canvas.height = window.innerHeight;
@@ -42,7 +74,6 @@ const ParticleAnimation = () => {
     handleResize();
     window.addEventListener('resize', handleResize);
 
-    // Initialize particles
     const numParticles = 300;
     particles.current = [];
 
@@ -57,7 +88,6 @@ const ParticleAnimation = () => {
       });
     }
 
-    // Mouse interaction
     const handleMouseMove = (event: MouseEvent) => {
       mouseX.current = event.clientX;
       mouseY.current = event.clientY;
@@ -66,7 +96,6 @@ const ParticleAnimation = () => {
       }
     };
 
-    // Mouse down/up handlers
     const handleMouseDown = (event: MouseEvent) => {
       isMouseDown.current = true;
       lastMousePos.current = { x: event.clientX, y: event.clientY };
@@ -78,7 +107,6 @@ const ParticleAnimation = () => {
       circleRadius.current = 0;
     };
 
-    // Click effect
     const handleClick = (event: MouseEvent) => {
       const clickX = event.clientX;
       const clickY = event.clientY;
@@ -96,15 +124,39 @@ const ParticleAnimation = () => {
       });
     };
 
+    const handleTouchStart = (event: TouchEvent) => {
+      event.preventDefault();
+      isMouseDown.current = true;
+      const touch = event.touches[0];
+      lastTouchPos.current = { x: touch.clientX, y: touch.clientY };
+      circleRadius.current = 0;
+    };
+
+    const handleTouchMove = (event: TouchEvent) => {
+      event.preventDefault();
+      const touch = event.touches[0];
+      mouseX.current = touch.clientX;
+      mouseY.current = touch.clientY;
+      if (isMouseDown.current) {
+        lastTouchPos.current = { x: touch.clientX, y: touch.clientY };
+      }
+    };
+
+    const handleTouchEnd = () => {
+      isMouseDown.current = false;
+      circleRadius.current = 0;
+    };
+
     window.addEventListener('mousemove', handleMouseMove);
     window.addEventListener('mousedown', handleMouseDown);
     window.addEventListener('mouseup', handleMouseUp);
     window.addEventListener('click', handleClick);
+    canvas.addEventListener('touchstart', handleTouchStart, { passive: false });
+    canvas.addEventListener('touchmove', handleTouchMove, { passive: false });
+    canvas.addEventListener('touchend', handleTouchEnd);
 
-    // Animation loop
     let animationFrameId: number;
     const animate = () => {
-      // Update gradient background - now using black to green
       gradientHue.current = (gradientHue.current + 0.1) % 360;
       const gradient = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
       gradient.addColorStop(0, `rgba(0, 20, 0, 0.1)`);
@@ -113,14 +165,13 @@ const ParticleAnimation = () => {
       ctx.fillStyle = gradient;
       ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-      // Handle mouse hold effect
       if (isMouseDown.current) {
         circleRadius.current = Math.min(circleRadius.current + 5, 300);
-        const { x, y } = lastMousePos.current;
+        const pos = lastTouchPos.current.x !== 0 ? lastTouchPos.current : lastMousePos.current;
 
         particles.current.forEach(particle => {
-          const dx = x - particle.x;
-          const dy = y - particle.y;
+          const dx = pos.x - particle.x;
+          const dy = pos.y - particle.y;
           const dist = Math.sqrt(dx * dx + dy * dy);
           
           if (dist < circleRadius.current) {
@@ -134,10 +185,8 @@ const ParticleAnimation = () => {
       }
 
       particles.current.forEach(particle => {
-        // Update particle position with varied speed
         particle.y += particle.vy;
 
-        // Mouse interaction
         const dx = mouseX.current - particle.x;
         const dy = mouseY.current - particle.y;
         const dist = Math.sqrt(dx * dx + dy * dy);
@@ -149,7 +198,6 @@ const ParticleAnimation = () => {
           particle.opacity = Math.max(0.3, particle.opacity - 0.01);
         }
 
-        // Reset particle if it goes off screen with random new speed
         if (particle.y > canvas.height) {
           particle.y = 0;
           particle.x = Math.random() * canvas.width;
@@ -157,10 +205,10 @@ const ParticleAnimation = () => {
           particle.character = matrixChars[Math.floor(Math.random() * matrixChars.length)];
         }
 
-        // Keep particles within canvas bounds
         particle.x = Math.max(0, Math.min(canvas.width, particle.x));
 
-        // Draw particle with glowing effect
+        const fontSize = particle.size || 15;
+        ctx.font = `${fontSize}px monospace`;
         const glow = particle.vy > 5 ? 0.8 : 0.3;
         ctx.shadowBlur = 5;
         ctx.shadowColor = `rgba(0, 255, 70, ${glow})`;
@@ -168,7 +216,6 @@ const ParticleAnimation = () => {
         ctx.fillText(particle.character, particle.x, particle.y);
         ctx.shadowBlur = 0;
 
-        // Randomly change characters and speeds
         if (Math.random() < 0.01) {
           particle.character = matrixChars[Math.floor(Math.random() * matrixChars.length)];
           particle.vy = Math.max(1, particle.vy + (Math.random() * 2 - 1));
@@ -185,6 +232,9 @@ const ParticleAnimation = () => {
       window.removeEventListener('mousedown', handleMouseDown);
       window.removeEventListener('mouseup', handleMouseUp);
       window.removeEventListener('click', handleClick);
+      canvas.removeEventListener('touchstart', handleTouchStart);
+      canvas.removeEventListener('touchmove', handleTouchMove);
+      canvas.removeEventListener('touchend', handleTouchEnd);
       cancelAnimationFrame(animationFrameId);
     };
   }, []);
